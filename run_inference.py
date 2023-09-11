@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
 import os
 import os.path as osp
+import time
 
 import cv2
 import gdown
@@ -37,8 +38,13 @@ def download_weight(weight_path):
                    output=weight_path, fuzzy=True)
 
 
-def load_image(fp):
-    img = cv2.imread(fp)
+def load_image(fp, num_retries=10):
+    retry_n = 0
+    while retry_n < num_retries:
+        img = cv2.imread(fp)
+        if img is not None:
+            break
+        time.sleep(2)
     if img.shape[-1] == 4:
         img = cv2.cvtColor(img, cv2.COLOR_BGRA2RGB)
     else:
