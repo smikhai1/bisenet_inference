@@ -27,6 +27,7 @@ def parse_args():
 
     parser.add_argument('--imgs_dir', type=str)
     parser.add_argument('--save_dir', type=str)
+    parser.add_argument('--continue_mode', action='store_true', default=False)
 
     return parser.parse_args()
 
@@ -99,11 +100,15 @@ class Inferencer(nn.Module):
             segm = cv2.resize(segm, (self.target_size, self.target_size), interpolation=cv2.INTER_NEAREST)
         return segm
 
-    def inference_on_dir(self, imgs_dp, save_dp):
+    def inference_on_dir(self, imgs_dp, save_dp, continue_mode=False):
         os.makedirs(save_dp, exist_ok=True)
-        for name in tqdm(os.listdir(imgs_dp)):
-            if name.startswith('.'):
-                continue
+        names_to_process = [name for name in os.listdir(imgs_dp) if not name.startswith('.')]
+        names_to_process.sort()
+        if continue_mode:
+            processed_names = {osp.splitext(name)[0] for name in os.listdir(save_dp)}
+            names_to_process = list(filter(lambda n: osp.splitext(n)[0] not in processed_names, names_to_process))
+
+        for name in tqdm(names_to_process):
             img_fp = osp.join(imgs_dp, name)
             segm = self.single_image_inference(img_fp)
             new_name = osp.splitext(name)[0] + '.png'
@@ -113,4 +118,5 @@ class Inferencer(nn.Module):
 if __name__ == '__main__':
     args = parse_args()
     segm_generator = Inferencer('./pretrained_models/seg.pth', device='cuda:0', target_size=512)
-    segm_generator.inference_on_dir(args.imgs_dir, args.save_dir)
+    segm_generator.inference_on_dir(args.imgs_dir, args.save_dir,
+                                    continue_mode=args.continue_mode)
